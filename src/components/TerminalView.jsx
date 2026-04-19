@@ -133,7 +133,22 @@ export default function TerminalView({ session, active = true, settings = {}, on
           try {
             const t = await navigator.clipboard.readText();
             if (t) {
-              window.termpro?.sendInput(session.id, t);
+              const CHUNK = 2048;
+              const DELAY_MS = 10;
+              if (t.length <= CHUNK) {
+                window.termpro?.sendInput(session.id, t);
+              } else {
+                // Pastes largas: chunking para no saturar el input buffer del shell
+                let i = 0;
+                const sendNext = () => {
+                  if (i >= t.length) return;
+                  const chunk = t.slice(i, i + CHUNK);
+                  i += CHUNK;
+                  window.termpro?.sendInput(session.id, chunk);
+                  if (i < t.length) setTimeout(sendNext, DELAY_MS);
+                };
+                sendNext();
+              }
               const lines = t.split('\n').length;
               if (t.length > 500 || lines > 5) {
                 showToast(`📋 ${t.length.toLocaleString()} chars · ${lines} lineas pegadas`);
