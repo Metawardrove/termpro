@@ -4,6 +4,17 @@
 
 Pensado para quienes orquestan varios agentes/terminales a la vez y se perdían entre pestañas. Cada proyecto es una "conversación" en el sidebar, tipo cliente de mensajería. El centro es un terminal real (xterm + node-pty) — bash, zsh o PowerShell, corriendo tal cual.
 
+## Descargar
+
+**Windows 10/11** — bajá el instalador de la última Release:
+
+- [TermPro-0.1.0-x64.exe](https://github.com/Metawardrove/termpro/releases/latest) — instalador NSIS (crea accesos directos)
+- [TermPro-0.1.0-portable.exe](https://github.com/Metawardrove/termpro/releases/latest) — portable, no instala nada
+
+El `.exe` no está firmado todavía, así que Windows SmartScreen muestra el warning "Windows protegió tu PC". Click en **Más información → Ejecutar de todos modos**. Si tenés Smart App Control activo (Win11), el Windows lo va a bloquear sin bypass — en ese caso usá la opción de correrlo desde código (más abajo).
+
+**macOS / Linux** — por ahora solo desde código (`npm run dev`).
+
 ## Qué tiene
 
 - **Terminal real** — corre `claude` CLI, `vim`, `htop`, dev servers, git. No es un wrapper.
@@ -20,17 +31,12 @@ Pensado para quienes orquestan varios agentes/terminales a la vez y se perdían 
 - **Git** — [git-scm.com](https://git-scm.com) (en Windows viene con Git Bash, necesario para bash)
 - Windows 10/11, macOS, o Linux
 
-## Instalación
+## Instalación desde código (dev / macOS / Linux)
 
 ```bash
 git clone https://github.com/Metawardrove/termpro.git
 cd termpro
 npm install
-```
-
-## Uso
-
-```bash
 npm run dev
 ```
 
