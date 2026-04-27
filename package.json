@@ -1,7 +1,7 @@
 {
   "name": "termpro",
-  "version": "0.1.0",
-  "description": "Multi-project terminal with chat-style UX",
+  "version": "0.2.0",
+  "description": "Multi-project terminal with chat-style UX, built for orchestrating Claude Code sessions in parallel",
   "private": true,
   "main": "electron/main.js",
   "scripts": {
@@ -36,9 +36,9 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "com.caseteja.termpro",
+    "appId": "com.termpro.app",
     "productName": "TermPro",
-    "copyright": "Copyright © 2026 Caseteja",
+    "copyright": "Copyright © 2026 Mateo Campos",
     "asar": true,
     "npmRebuild": false,
     "buildDependenciesFromSource": false,

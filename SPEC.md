@@ -1,11 +1,11 @@
 # TermPro — Spec de diseño UI/UX
 
-> Interfaz de gestion multi-terminal con ergonomia de cliente de mensajeria.
+> Interfaz de gestión multi-terminal con ergonomía de cliente de mensajería.
 > Los terminales no son ventanas desechables, son conversaciones con tus proyectos.
 
 ## Concepto
 
-TermPro convierte la experiencia de gestionar multiples terminales (tipo Warp + Claude Code) en algo con la ergonomia visual de un cliente de mensajeria. Cada terminal activo se comporta como un "chat" vivo: proyecto asociado, historial de comandos, estado (corriendo/idle/error), panel lateral con resumen.
+TermPro convierte la experiencia de gestionar múltiples terminales (tipo Warp + Claude Code) en algo con la ergonomía visual de un cliente de mensajería. Cada terminal activo se comporta como un "chat" vivo: proyecto asociado, historial de comandos, estado (corriendo/idle/error), panel lateral con resumen.
 
 Inspirado en: Warp (bloques comando+resultado), Slack (sidebar + search global), WhatsApp (unread badges + persistencia), Hyper (custom terminals).
 
@@ -14,60 +14,60 @@ Inspirado en: Warp (bloques comando+resultado), Slack (sidebar + search global),
 ### Columna izquierda — Navegador (≈ 280px)
 
 **Zona superior — Terminales activos (pinned)**
-- Avatar/icono del proyecto (color o emoji, ej. 🐝 Caseteja, 📊 La Milenaria)
+- Avatar/icono del proyecto (color o emoji, ej. 🐝 my-shop, 📊 analytics-pipeline)
 - Nombre del proyecto + rama de Git activa en secundario
-- Badge de estado: verde (idle), ambar (corriendo), rojo (error/exit≠0), azul (esperando input)
-- Contador de lineas no leidas (equivalente a "219 new")
+- Badge de estado: verde (idle), ámbar (corriendo), rojo (error/exit≠0), azul (esperando input)
+- Contador de líneas no leídas (equivalente a "219 new")
 - Checkmark azul si es el activo en vista central
-- Boton "+ Nueva sesion"
+- Botón "+ Nueva sesión"
 
 **Zona inferior — Proyectos y buscador**
 - Header "Proyectos" con contador + dropdown (recientes/favoritos/por carpeta)
 - Buscador global `Cmd+K` que indexa: proyectos, historial de comandos, archivos tocados, outputs recientes
 - Lista con metadata:
-  - Ultimo comando ejecutado
+  - Último comando ejecutado
   - Indicador "typing..." cuando un comando corre en vivo
-  - Timestamp de ultima actividad
-  - Icono de tipo (Node, Python, Docker, N8N)
-- Widget "LIVE" al fondo para procesos de larga duracion (build, deploy, test) con tiempo transcurrido
+  - Timestamp de última actividad
+  - Icono de tipo (Node, Python, Docker, etc.)
+- Widget "LIVE" al fondo para procesos de larga duración (build, deploy, test) con tiempo transcurrido
 
 ### Columna central — Terminal activo (≈ flex, ~720px)
 
-Terminal renderizado como conversacion, no crudo monocromo.
+Terminal renderizado como conversación, no crudo monocromo.
 
 **Header**
-- Nombre proyecto + numero de sesion ("Terminal 24")
-- Acciones rapidas: grabar (📹), compartir output (🔗), snapshot (📸), limpiar (🧹)
-- Avatares de colaboradores/agentes conectados (tu, Claude Code, agente Paperclip, etc.)
+- Nombre proyecto + número de sesión ("Terminal 24")
+- Acciones rápidas: limpiar (🧹), restart, kill, Claude bypass
+- Avatares de colaboradores/agentes conectados (usuario + Claude Code u otro CLI agente)
 
 **Flujo conversacional**
-- Comandos del usuario → burbujas azules alineadas a la derecha
+- Comandos del usuario → burbujas alineadas a la derecha
 - Outputs del sistema → alineados izq con avatar del proyecto/agente
-- Outputs largos (logs, stack traces) → bloques expandibles tipo acordeon
+- Outputs largos (logs, stack traces) → bloques expandibles tipo acordeón
 - Outputs multimedia = attachments:
   - Imagen generada → preview inline
   - Archivo nuevo → card con icono
   - JSON → syntax highlighting colapsable
-  - Audios/grabaciones → voice message (waveform + play + duracion)
-- Reacciones con emoji por bloque: 👍 funciono, 🔥 importante, 🐛 revisar, 📌 pin
+  - Audios/grabaciones → voice message (waveform + play + duración)
+- Reacciones con emoji por bloque: 👍 funcionó, 🔥 importante, 🐛 revisar, 📌 pin
 - Timestamps relativos ("4m", "Today, 5 Jul")
 
-**Input inferior**
-- Campo con placeholder "Your command..." + autocomplete contextual
+**Input inferior (modo lectura — al scrollear arriba)**
+- Textarea fijo con placeholder "Escribe tu mensaje" + Shift+Enter multilinea
 - Indicador "1 unsaved draft" si comando a medio escribir
-- Iconos: microfono (dictar), attachment, enviar
+- Iconos: micrófono (dictar), attachment, enviar
 - "Claude is typing..." cuando agente compone respuesta
 
-### Columna derecha — Resumen de sesion (≈ 300px)
+### Columna derecha — Resumen de sesión (≈ 300px)
 
 **Members**
 - Usuario (rol "Creator")
-- Agentes conectados (Claude Code, GPT-4o, agente Paperclip especifico)
+- Agentes conectados (Claude Code, GPT-4o, etc.)
 - Icono de voz para invocarlos
 
 **Media**
 - Grid de miniaturas: archivos, capturas, videos, outputs visuales
-- Contador total + boton "ver todo"
+- Contador total + botón "ver todo"
 
 **Tasks**
 - Checklist auto-generada de tareas detectadas/asignadas
@@ -75,76 +75,71 @@ Terminal renderizado como conversacion, no crudo monocromo.
 - Convertir cualquier mensaje del terminal en tarea con un click
 
 **Resumen IA** (TL;DR)
-- Generado por Claude Haiku cada N minutos
-- Ejemplo: "En esta sesion: configuraste webhook N8N, corregiste bug .first() en Update row, desplegaste a VPS. Pendiente: CORS en Respond to Webhook."
+- Generado por Claude Haiku cada N minutos (opt-in)
+- Ejemplo: "En esta sesión: configuraste webhook X, corregiste bug en endpoint /users, desplegaste a staging. Pendiente: agregar tests."
 - Exportar → Markdown, Notion, Google Doc
 
 ## Decisiones UX clave
 
-1. **Estado persistente por terminal** — cerrar la app no mata sesiones. Corren en daemon local/VPS y al abrir ves el diff (como WhatsApp)
-2. **Unread counters reales** — badge rojo si un build termino o test fallo mientras mirabas otro terminal
-3. **Busqueda universal tipo Slack** — `Cmd+K` encuentra comando/output/error/archivo en cualquier sesion, proyecto, fecha
-4. **Pinned messages / comandos favoritos** — `docker exec openclaw-xam7-openclaw-1 ...` pineable al tope como snippet
-5. **Multi-agente en la misma sesion** — usuario + Claude Code + agente Paperclip especializado, cada uno con avatar y color de burbuja
-6. **Dark mode por defecto** — palette grises azulados + acentos azul electrico y naranja para alertas
-7. **Responsive colapsable** — cols izq/der colapsan a iconos o se ocultan (modo foco)
+1. **Estado persistente por terminal** — cerrar la app no mata sesiones (objetivo). Corren en daemon local y al abrir ves el diff (como WhatsApp)
+2. **Unread counters reales** — badge rojo si un build terminó o test falló mientras mirabas otro terminal
+3. **Búsqueda universal tipo Slack** — `Cmd+K` encuentra comando/output/error/archivo en cualquier sesión, proyecto, fecha
+4. **Pinned messages / comandos favoritos** — comandos largos pineables al tope como snippet
+5. **Multi-agente en la misma sesión** — usuario + Claude Code + otro agente, cada uno con avatar y color de burbuja
+6. **Dark mode por defecto** — múltiples paletas, todas con buen contraste
+7. **Responsive colapsable** — cols izq/der colapsan a iconos o se ocultan (modo enfoque)
 
 ## Flujos principales
 
-1. **Onboarding** — conectar carpeta/proyecto, autorizar shell local o VPS remoto via SSH
-2. **Nueva sesion** — seleccionar proyecto → elegir shell (bash, PowerShell, Warp, Claude Code) → listo
+1. **Onboarding** — conectar carpeta/proyecto, autorizar shell local
+2. **Nueva sesión** — seleccionar proyecto → elegir shell (bash, PowerShell, zsh, Git Bash) → listo
 3. **Cambiar entre terminales** — un click, estado preservado
-4. **Invocar agente** — `@claude` en input abre menu de agentes disponibles
-5. **Generar resumen** — automatico cada X min o manual, exportable
-6. **Compartir sesion** — link publico solo lectura con replay de la conversacion
+4. **Invocar agente** — abrir Claude Code u otro CLI dentro del terminal
+5. **Generar resumen** — automático cada X min o manual, exportable
+6. **Compartir sesión** — link público sólo lectura con replay de la conversación (futuro)
 
 ## Notas visuales
 
-- **Tipografia terminal central** — monoespaciada (JetBrains Mono / Fira Code / Geist Mono) para outputs, sans-serif para metadata de burbuja (timestamps, nombres)
-- **Semantica de color** — verde exito, rojo error, ambar warning, azul info, aplicado a bordes de burbuja segun exit code
+- **Tipografía terminal central** — monoespaciada (JetBrains Mono / Fira Code / Geist Mono) para outputs, sans-serif para metadata de burbuja (timestamps, nombres)
+- **Semántica de color** — verde éxito, rojo error, ámbar warning, azul info, aplicado a bordes de burbuja según exit code
 - **Diff viewer inline** — cuando un comando modifica archivos, mostrar diff como card colapsable dentro del flujo
 
 ## Mapeo spec → fases
 
-| Fase | Entregable | Spec cubierto |
-|------|-----------|---------------|
-| 0 — Scaffold | Electron + 3 columnas Tailwind | **Hecho** (bones visuales) |
-| 1 — Shell Core | bash real con xterm.js + node-pty | **En progreso** (bug: terminal no acepta input tras relanzar) |
-| 2 — Multi-sesion | Sidebar con tabs, switch preserva estado | **En progreso** (sidebar basico existe) |
-| 3 — Block parsing | Outputs agrupados como bloques comando+resultado tipo Warp | Falta |
-| 4 — Chat style | Burbujas der/izq, timestamps, colores por exit code | Falta (core del spec) |
-| 5 — Proyectos + metadata | Auto-detecta proyecto por CWD, icono, unread counter | Falta |
-| 6 — Persistencia | SQLite, sesiones sobreviven cerrar app | Falta |
-| 7 — IA integrations | `@claude` en input + resumen auto + agent multi-color | Falta |
-| 8 — Search + polish | `Cmd+K` global, toast nativos, rich media | Falta |
+| Fase | Entregable | Estado |
+|------|-----------|--------|
+| 0 — Scaffold | Electron + 3 columnas Tailwind | ✅ Hecho |
+| 1 — Shell Core | bash real con xterm.js + node-pty | ✅ Hecho |
+| 2 — Multi-sesión | Sidebar con tabs, switch preserva estado | ✅ Hecho |
+| 3 — Block parsing | Outputs agrupados como bloques tipo Warp | ⏳ Falta |
+| 4 — Chat style | Burbujas izq/der, timestamps, colores por exit code | ⏳ Falta |
+| 5 — Proyectos + metadata | Auto-detecta proyecto por CWD, icono, unread counter | ✅ Parcial |
+| 6 — Persistencia | SQLite, sesiones sobreviven cerrar app | ⏳ Falta |
+| 7 — IA integrations | Resumen auto + agent multi-color | ⏳ Falta |
+| 8 — Search + polish | `Cmd+K` global, toast nativos, rich media | ✅ Parcial |
 
-### No cubierto aun por fases (agregar)
+### No cubierto aún
 
-- Voice messages / grabacion de sesiones
+- Voice messages / grabación de sesiones
 - Reacciones emoji por bloque
 - Pinned commands / snippets favoritos
-- Compartir sesion via link publico read-only
+- Compartir sesión via link público read-only
 - Diff viewer inline para comandos que modifican archivos
 - Media grid en panel derecho
-- Shell remoto via SSH (VPS)
+- Shell remoto via SSH
 
 ## Stack
 
-- **Electron** — ventana nativa Windows, proven para terminales
-- **xterm.js** — estandar de facto (VS Code, Hyper, Warp)
-- **@homebridge/node-pty-prebuilt-multiarch** — PTY sin build tools
+- **Electron** — ventana nativa multiplataforma, proven para terminales
+- **xterm.js** — estándar de facto (VS Code, Hyper, Warp)
+- **node-pty** — PTY (NAPI, sin build tools)
 - **Vite + React** — UI reactiva
-- **Tailwind CSS** — estilos sin friccion
+- **Tailwind CSS** — estilos sin fricción
 - **better-sqlite3** — persistencia (fase 6+)
-- **Claude Haiku** — resumenes IA (fase 7, ~$1-2/mes)
+- **Claude Haiku** (opt-in) — resúmenes IA (fase 7)
 
-## Costo
+## Costo de ejecutar TermPro
 
-- Desarrollo: $0 (subscription Claude)
-- Dependencias: $0 (OSS)
-- Hosting: $0 (local)
-- IA base: $0 (reusa CLI claude)
-- IA API directa (opcional): ~$1-2/mes
-- Code signing (solo si distribuyes): $200-400/año
-
-**Uso personal: $0**
+- Desarrollo / uso personal: **$0** (todo OSS, reutiliza el shell del SO)
+- IA opcional (Haiku para resúmenes): ~$1-2/mes con uso ligero
+- Code signing (solo si distribuyes binarios firmados): $200-400/año
