@@ -5,3 +5,7 @@ release
 *.log
 .env
 .env.local
+.claude/
+.vscode/
+.idea/
+*.swp

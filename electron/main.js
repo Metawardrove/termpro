@@ -295,10 +295,13 @@ function createWindow() {
           modulesNotes += `\n--- _docs/modulos/${f} ---\n${truncate(content, 1500)}\n`;
         }
       }
-      // Nota MOC principal si existe
-      const mocPath = path.join(cwd, '_docs', 'Ecosistema IA - Caseteja.md');
-      if (fs.existsSync(mocPath)) {
-        modulesNotes += `\n--- _docs/Ecosistema IA - Caseteja.md ---\n${truncate(fs.readFileSync(mocPath, 'utf8'), 1500)}\n`;
+      // Cualquier MOC/index principal en _docs (busca el primer .md en la raiz de _docs)
+      const docsRoot = path.join(cwd, '_docs');
+      if (fs.existsSync(docsRoot)) {
+        const rootMds = fs.readdirSync(docsRoot).filter((f) => f.endsWith('.md'));
+        for (const f of rootMds.slice(0, 3)) {
+          modulesNotes += `\n--- _docs/${f} ---\n${truncate(fs.readFileSync(path.join(docsRoot, f), 'utf8'), 1500)}\n`;
+        }
       }
     } catch {}
 

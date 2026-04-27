@@ -296,7 +296,7 @@ export default function ProjectCreator({ projects, onCancel, onLaunch }) {
               className="w-full bg-bg-900 border border-bg-600 rounded-lg px-3 py-2 text-xs text-gray-100 resize-none outline-none focus:border-accent-terra/60 font-mono"
             />
             <p className="text-[10px] text-gray-500 mt-1">
-              Ej: "Stack Node+Express, va en operaciones/reportes/, se integra con el sheet 15Xf..., autoriza por service account existente de rosita-caseteja"
+              Ej: "App Next.js 14 con Tailwind, persistencia en Postgres via Prisma, deploy a Vercel, auth con Clerk"
             </p>
           </div>
 
