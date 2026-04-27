@@ -49,6 +49,24 @@ export default function TerminalView({ session, active = true, settings = {}, on
   const [dragOver, setDragOver] = useState(false);
   const [attachToast, setAttachToast] = useState(null);
   const [livePreview, setLivePreview] = useState('');
+  const [composeText, setComposeText] = useState('');
+  const [anchors, setAnchors] = useState([]); // { id, label, bufferY, ts }
+  const [bufferTick, setBufferTick] = useState(0);
+  const composeRef = useRef(null);
+  const lastTickRef = useRef(0);
+
+  const pushAnchor = (label, bufferY) => {
+    setAnchors((prev) => {
+      const next = [...prev, {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        label: (label || '').slice(0, 80),
+        bufferY,
+        ts: Date.now()
+      }];
+      if (next.length > 60) next.splice(0, next.length - 60);
+      return next;
+    });
+  };
 
   const showToast = (msg) => {
     setAttachToast(msg);
@@ -131,27 +149,34 @@ export default function TerminalView({ session, active = true, settings = {}, on
             }
           } catch { /* fallback a texto */ }
           try {
-            const t = await navigator.clipboard.readText();
-            if (t) {
+            const raw = await navigator.clipboard.readText();
+            if (raw) {
+              // Normaliza CRLF y elimina cualquier marcador de bracketed-paste embebido
+              // (de lo contrario el usuario podria romper el wrapping pegando texto malicioso)
+              const clean = raw.replace(/\r\n?/g, '\n').replace(/\x1b\[20[01]~/g, '');
+              // Wrap en bracketed-paste: Claude Code, bash/readline, zsh, vim, etc. lo tratan
+              // como UN solo paste. Sin esto, cada \n se ejecuta como Enter y solo queda
+              // visible la ultima linea (el shell fue ejecutando las anteriores una a una).
+              const payload = `\x1b[200~${clean}\x1b[201~`;
               const CHUNK = 2048;
               const DELAY_MS = 10;
-              if (t.length <= CHUNK) {
-                window.termpro?.sendInput(session.id, t);
+              if (payload.length <= CHUNK) {
+                window.termpro?.sendInput(session.id, payload);
               } else {
                 // Pastes largas: chunking para no saturar el input buffer del shell
                 let i = 0;
                 const sendNext = () => {
-                  if (i >= t.length) return;
-                  const chunk = t.slice(i, i + CHUNK);
+                  if (i >= payload.length) return;
+                  const chunk = payload.slice(i, i + CHUNK);
                   i += CHUNK;
                   window.termpro?.sendInput(session.id, chunk);
-                  if (i < t.length) setTimeout(sendNext, DELAY_MS);
+                  if (i < payload.length) setTimeout(sendNext, DELAY_MS);
                 };
                 sendNext();
               }
-              const lines = t.split('\n').length;
-              if (t.length > 500 || lines > 5) {
-                showToast(`📋 ${t.length.toLocaleString()} chars · ${lines} lineas pegadas`);
+              const lines = clean.split('\n').length;
+              if (clean.length > 500 || lines > 5) {
+                showToast(`📋 ${clean.length.toLocaleString()} chars · ${lines} lineas pegadas`);
               }
             }
           } catch { /* ignore */ }
@@ -225,6 +250,12 @@ export default function TerminalView({ session, active = true, settings = {}, on
       if (id === session.id && !disposed) {
         term.write(data);
         onActivityRef.current?.(Date.now());
+        // Throttle tick — reposiciona dots del timeline sin saturar React
+        const tickNow = Date.now();
+        if (tickNow - lastTickRef.current > 500) {
+          lastTickRef.current = tickNow;
+          setBufferTick((t) => t + 1);
+        }
         // Error detection con throttle (max 1 cada 3s para evitar spam)
         const clean = data.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
         const now = Date.now();
@@ -258,7 +289,11 @@ export default function TerminalView({ session, active = true, settings = {}, on
         const cmd = inputBufRef.current.trim();
         inputBufRef.current = '';
         setLivePreview('');
-        if (cmd) onCommandRef.current?.({ cmd, ts: Date.now() });
+        if (cmd) {
+          const buf = term.buffer.active;
+          pushAnchor(cmd, buf.baseY + buf.cursorY);
+          onCommandRef.current?.({ cmd, ts: Date.now() });
+        }
       } else if (data === '\x7f' || data === '\b') {
         inputBufRef.current = inputBufRef.current.slice(0, -1);
         setLivePreview(inputBufRef.current);
@@ -378,6 +413,68 @@ export default function TerminalView({ session, active = true, settings = {}, on
     if (term) { term.scrollToBottom(); term.focus(); }
   };
 
+  const jumpToAnchor = (bufferY) => {
+    const term = termRef.current;
+    if (!term) return;
+    try {
+      const buf = term.buffer.active;
+      // scrollToLine espera un offset relativo al baseY del viewport
+      const offset = bufferY - buf.viewportY;
+      term.scrollLines(offset);
+    } catch (e) { /* ignore */ }
+  };
+
+  const sendCompose = () => {
+    const text = composeText;
+    if (!text.trim()) return;
+    const clean = text.replace(/\r\n?/g, '\n').replace(/\x1b\[20[01]~/g, '');
+    // bracketed-paste + \r final para que Claude/bash lo trate como UN mensaje multilinea
+    const payload = `\x1b[200~${clean}\x1b[201~\r`;
+    const CHUNK = 2048;
+    if (payload.length <= CHUNK) {
+      window.termpro?.sendInput(session.id, payload);
+    } else {
+      let i = 0;
+      const sendNext = () => {
+        if (i >= payload.length) return;
+        window.termpro?.sendInput(session.id, payload.slice(i, i + CHUNK));
+        i += CHUNK;
+        if (i < payload.length) setTimeout(sendNext, 10);
+      };
+      sendNext();
+    }
+    const term = termRef.current;
+    if (term) {
+      const buf = term.buffer.active;
+      pushAnchor(clean.split('\n')[0] || clean, buf.baseY + buf.cursorY);
+    }
+    setComposeText('');
+    requestAnimationFrame(() => {
+      term?.scrollToBottom();
+      term?.focus();
+    });
+    onCommandRef.current?.({ cmd: clean.split('\n')[0] || clean, ts: Date.now() });
+  };
+
+  // Auto-focus textarea cuando el usuario scrollea arriba
+  useEffect(() => {
+    if (scrolledUp && composeRef.current) {
+      requestAnimationFrame(() => composeRef.current?.focus());
+    }
+  }, [scrolledUp]);
+
+  // Podar anchors cuando xterm descarta lineas viejas del scrollback
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term || anchors.length === 0) return;
+    const buf = term.buffer.active;
+    const minY = Math.max(0, buf.baseY - 10000);
+    const stale = anchors.some((a) => a.bufferY < minY);
+    if (stale) {
+      setAnchors((prev) => prev.filter((a) => a.bufferY >= minY));
+    }
+  }, [bufferTick, anchors.length]);
+
   const runSearch = (q, dir = 'next') => {
     const s = searchRef.current;
     if (!s || !q) return;
@@ -467,23 +564,40 @@ export default function TerminalView({ session, active = true, settings = {}, on
         {scrolledUp && (
           <>
             <div
-              className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-bg-900 via-bg-900/90 to-transparent h-20 pointer-events-none"
+              className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-bg-900 via-bg-900/90 to-transparent h-24 pointer-events-none"
               style={{ zIndex: 40 }}
             />
             <div
-              className="absolute bottom-3 left-3 right-16 bg-bg-800/90 backdrop-blur-md border border-bg-600 rounded-lg shadow-xl px-3 py-2 pointer-events-none"
+              className="absolute bottom-3 left-3 right-16 bg-bg-800/95 backdrop-blur-md border border-bg-600 rounded-lg shadow-xl px-3 py-2"
               style={{ zIndex: 45 }}
             >
-              <div className="flex items-center gap-2 mb-0.5">
+              <div className="flex items-center gap-2 mb-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-accent-terra animate-pulse" />
                 <span className="text-[9px] uppercase tracking-[0.12em] text-gray-500 font-semibold">
-                  {livePreview ? 'Escribiendo' : 'Modo lectura · scroll arriba'}
+                  Modo escritura · scroll arriba
+                </span>
+                <span className="text-[9px] text-gray-600 ml-auto">
+                  Shift+Enter nueva linea · Enter envia · Esc foco terminal
                 </span>
               </div>
-              <div className="text-[13px] font-mono text-gray-100 whitespace-pre-wrap break-all min-h-[16px] leading-relaxed">
-                {livePreview || <span className="text-gray-600 italic">Tipea — el terminal no va a saltar abajo</span>}
-                <span className="inline-block w-1.5 h-3.5 bg-accent-terra ml-0.5 align-middle animate-pulse" />
-              </div>
+              <textarea
+                ref={composeRef}
+                value={composeText}
+                onChange={(e) => setComposeText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendCompose();
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    termRef.current?.focus();
+                  }
+                }}
+                placeholder="Escribe tu mensaje — Whispr y dictado funcionan aqui"
+                rows={Math.min(8, Math.max(1, composeText.split('\n').length))}
+                className="w-full bg-transparent text-[13px] font-mono text-gray-100 outline-none border-none resize-none leading-relaxed placeholder:text-gray-600 placeholder:italic"
+                style={{ caretColor: 'var(--tp-accent)' }}
+              />
             </div>
             <button
               onClick={jumpToBottom}
@@ -495,6 +609,46 @@ export default function TerminalView({ session, active = true, settings = {}, on
             </button>
           </>
         )}
+        {/* Timeline rail — puntos en cada mensaje enviado */}
+        {anchors.length > 0 && (() => {
+          const term = termRef.current;
+          if (!term) return null;
+          // bufferTick referenced to re-render on buffer growth
+          void bufferTick;
+          const buf = term.buffer.active;
+          const total = Math.max(buf.length, buf.baseY + buf.cursorY + 1, 1);
+          return (
+            <div
+              className="absolute top-2 bottom-2 right-[3px] pointer-events-none"
+              style={{ width: 12, zIndex: 35 }}
+              title="Timeline · click en un punto salta a ese mensaje"
+            >
+              {anchors.map((a, i) => {
+                const pct = Math.min(100, Math.max(0, (a.bufferY / total) * 100));
+                const isLatest = i === anchors.length - 1;
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => jumpToAnchor(a.bufferY)}
+                    title={`${a.label}\n${new Date(a.ts).toLocaleTimeString()}`}
+                    className="absolute left-1/2 rounded-full pointer-events-auto transition-transform hover:scale-150"
+                    style={{
+                      top: `${pct}%`,
+                      width: isLatest ? 8 : 5,
+                      height: isLatest ? 8 : 5,
+                      marginLeft: isLatest ? -4 : -2.5,
+                      marginTop: isLatest ? -4 : -2.5,
+                      background: isLatest ? 'var(--tp-accent)' : 'var(--tp-accent-soft, #8ab4c9)',
+                      boxShadow: isLatest ? '0 0 10px var(--tp-accent)' : '0 0 3px rgba(0,0,0,0.5)',
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
+                  />
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
