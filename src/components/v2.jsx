@@ -138,7 +138,7 @@ export function WindowChrome({ projectCount, runningCount, onCmdK, onOpenThemes,
 }
 
 // ─── CenterHeader — info del proyecto activo arriba del terminal ───
-export function CenterHeader({ project, session, onKill, onClear, onRestart }) {
+export function CenterHeader({ project, session, onKill, onClear, onRestart, onClaudeBypass }) {
   if (!project) {
     return (
       <div
@@ -190,6 +190,27 @@ export function CenterHeader({ project, session, onKill, onClear, onRestart }) {
         </div>
       </div>
       <div className="flex gap-1">
+        {onClaudeBypass && (
+          <button
+            onClick={onClaudeBypass}
+            title="Claude sin permisos (--dangerously-skip-permissions). Ejecuta sin pedir confirmacion. Usar con cuidado."
+            className="w-7 h-7 rounded-md cursor-pointer inline-flex items-center justify-center border"
+            style={{
+              background: 'rgba(229,90,75,0.12)',
+              color: '#ef8478',
+              borderColor: 'rgba(239,132,120,0.35)'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(229,90,75,0.22)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(229,90,75,0.12)'; }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5l-8-3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+              <path d="m9 11 2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0"/>
+              <line x1="12" y1="7" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="12" cy="15.5" r="1" fill="currentColor"/>
+            </svg>
+          </button>
+        )}
         <button
           onClick={onClear}
           title="Limpiar"
@@ -522,6 +543,7 @@ export function CommandPalette({ open, onClose, projects, sessions, onSelectProj
   }, [open]);
 
   const actions = [
+    { id: 'claude-bypass', label: '⚠ Claude bypass — modo sin permisos', hint: 'dangerous' },
     { id: 'focus', label: 'Modo enfoque', hint: '⌘.' },
     { id: 'toggle-left', label: 'Toggle panel izquierdo', hint: '⌘B' },
     { id: 'toggle-right', label: 'Toggle panel derecho', hint: '⌘J' },

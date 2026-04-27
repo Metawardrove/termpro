@@ -434,6 +434,19 @@ export default function App() {
   const runningCount = sessions.filter((s) => s.status === 'running').length;
   const activeProject = activeSession?.project || null;
 
+  const launchClaudeBypass = useCallback(() => {
+    if (!activeId) {
+      pushToast({ kind: 'info', message: 'Abre un proyecto primero' });
+      return;
+    }
+    window.termpro?.sendInput(activeId, 'claude --dangerously-skip-permissions\r');
+    pushToast({
+      kind: 'error',
+      message: 'Claude corriendo en modo sin permisos — ejecutara todo sin confirmar',
+      duration: 4500
+    });
+  }, [activeId, pushToast]);
+
   return (
     <div
       className="h-full w-full flex flex-col relative z-[1]"
@@ -514,6 +527,7 @@ export default function App() {
                   onClear={() => pushToast({ kind: 'info', message: 'Sugerencia: usa `clear` dentro del terminal' })}
                   onRestart={() => pushToast({ kind: 'info', message: 'Reinicia manualmente cerrando y reabriendo el proyecto' })}
                   onKill={() => activeId && closeSession(activeId)}
+                  onClaudeBypass={launchClaudeBypass}
                 />
               )}
               {activeSession?.needsPermission && (
@@ -627,6 +641,7 @@ export default function App() {
           else if (id === 'settings') setSettingsOpen(true);
           else if (id === 'onboarding') setOnboardingOpen(true);
           else if (id === 'about') setAboutOpen(true);
+          else if (id === 'claude-bypass') launchClaudeBypass();
         }}
       />
 
